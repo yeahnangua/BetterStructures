@@ -7,7 +7,10 @@ import com.magmaguy.betterstructures.buildingfitter.util.LocationProjector;
 import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
+import com.magmaguy.betterstructures.mobtracking.MobSpawnConfig;
+import com.magmaguy.betterstructures.mobtracking.MobTrackingManager;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.structurelocation.StructureLocationData;
 import com.magmaguy.betterstructures.structurelocation.StructureLocationManager;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.MythicMobs;
@@ -31,9 +34,12 @@ import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
@@ -321,6 +327,10 @@ public class FitAnything {
     }
 
     private void spawnEntities() {
+        List<UUID> spawnedMobUUIDs = new ArrayList<>();
+        List<MobSpawnConfig> mobSpawnConfigs = new ArrayList<>();
+
+        // Spawn vanilla mobs
         for (Vector entityPosition : schematicContainer.getVanillaSpawns().keySet()) {
             Location signLocation = LocationProjector.project(location, schematicOffset, entityPosition).clone();
             signLocation.getBlock().setType(Material.AIR);
@@ -328,7 +338,8 @@ public class FitAnything {
             signLocation.add(new Vector(0.5, 0, 0.5));
             //I think FAWE is messing with this
             signLocation.getChunk().load();
-            Entity entity = signLocation.getWorld().spawnEntity(signLocation, schematicContainer.getVanillaSpawns().get(entityPosition));
+            EntityType entityType = schematicContainer.getVanillaSpawns().get(entityPosition);
+            Entity entity = signLocation.getWorld().spawnEntity(signLocation, entityType);
             entity.setPersistent(true);
             if (entity instanceof LivingEntity) {
                 ((LivingEntity) entity).setRemoveWhenFarAway(false);
@@ -339,14 +350,47 @@ public class FitAnything {
                 EnderCrystal enderCrystal = (EnderCrystal) entity;
                 enderCrystal.setShowingBottom(false);
             }
+
+            // Track mob for respawning (only LivingEntities)
+            // Store the actual spawn location relative to structure origin (includes schematicOffset)
+            if (entity instanceof LivingEntity && DefaultConfig.isMobTrackingEnabled()) {
+                Vector actualOffset = schematicOffset.clone().add(entityPosition);
+                spawnedMobUUIDs.add(entity.getUniqueId());
+                mobSpawnConfigs.add(new MobSpawnConfig(
+                        MobSpawnConfig.MobType.VANILLA,
+                        entityType.name(),
+                        actualOffset.getX(),
+                        actualOffset.getY(),
+                        actualOffset.getZ()
+                ));
+            }
         }
+
+        // Spawn EliteMobs bosses
         for (Vector elitePosition : schematicContainer.getEliteMobsSpawns().keySet()) {
             Location eliteLocation = LocationProjector.project(location, schematicOffset, elitePosition).clone();
             eliteLocation.getBlock().setType(Material.AIR);
             eliteLocation.add(new Vector(0.5, 0, 0.5));
             String bossFilename = schematicContainer.getEliteMobsSpawns().get(elitePosition);
-            //If the spawn fails then don't continue
-            if (!EliteMobs.Spawn(eliteLocation, bossFilename)) return;
+
+            // Use spawnAndReturn to get the entity
+            Entity eliteMob = EliteMobs.spawnAndReturn(eliteLocation, bossFilename);
+            if (eliteMob == null) return;
+
+            // Track mob (EliteMobs only for state tracking, not respawning)
+            // Store actual offset including schematicOffset
+            if (DefaultConfig.isMobTrackingEnabled()) {
+                Vector actualOffset = schematicOffset.clone().add(elitePosition);
+                spawnedMobUUIDs.add(eliteMob.getUniqueId());
+                mobSpawnConfigs.add(new MobSpawnConfig(
+                        MobSpawnConfig.MobType.ELITEMOBS,
+                        bossFilename,
+                        actualOffset.getX(),
+                        actualOffset.getY(),
+                        actualOffset.getZ()
+                ));
+            }
+
             Location lowestCorner = location.clone().add(schematicOffset);
             Location highestCorner = lowestCorner.clone().add(new Vector(schematicClipboard.getRegion().getWidth() - 1, schematicClipboard.getRegion().getHeight(), schematicClipboard.getRegion().getLength() - 1));
             if (DefaultConfig.isProtectEliteMobsRegions() &&
@@ -361,14 +405,39 @@ public class FitAnything {
             }
         }
 
-        // carm start - Support for MythicMobs
+        // Spawn MythicMobs
         for (Map.Entry<Vector, String> entry : schematicContainer.getMythicMobsSpawns().entrySet()) {
             Location mobLocation = LocationProjector.project(location, schematicOffset, entry.getKey()).clone();
             mobLocation.getBlock().setType(Material.AIR);
 
-            //If the spawn fails then don't continue
-            if (!MythicMobs.Spawn(mobLocation, entry.getValue())) return;
+            // Use spawnAndReturn to get the entity
+            Entity mythicMob = MythicMobs.spawnAndReturn(mobLocation, entry.getValue());
+            if (mythicMob == null) return;
+
+            // Track mob for respawning
+            // Store actual offset including schematicOffset
+            if (DefaultConfig.isMobTrackingEnabled()) {
+                Vector actualOffset = schematicOffset.clone().add(entry.getKey());
+                spawnedMobUUIDs.add(mythicMob.getUniqueId());
+                mobSpawnConfigs.add(new MobSpawnConfig(
+                        MobSpawnConfig.MobType.MYTHICMOBS,
+                        entry.getValue(),
+                        actualOffset.getX(),
+                        actualOffset.getY(),
+                        actualOffset.getZ()
+                ));
+            }
         }
-        // carm end - Support for MythicMobs
+
+        // Register mobs with tracking manager
+        if (DefaultConfig.isMobTrackingEnabled() && !spawnedMobUUIDs.isEmpty()) {
+            // Get or create structure location data
+            StructureLocationData structureData = StructureLocationManager.getInstance()
+                    .getStructureAt(location.getWorld().getName(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+
+            if (structureData != null) {
+                MobTrackingManager.getInstance().registerStructureMobs(structureData, spawnedMobUUIDs, mobSpawnConfigs);
+            }
+        }
     }
 }

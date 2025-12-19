@@ -13,7 +13,9 @@ import com.magmaguy.betterstructures.config.spawnpools.SpawnPoolsConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.content.BSPackage;
 import com.magmaguy.betterstructures.listeners.FirstTimeSetupWarner;
+import com.magmaguy.betterstructures.listeners.MobDeathListener;
 import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
+import com.magmaguy.betterstructures.mobtracking.MobTrackingManager;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
@@ -67,6 +69,14 @@ public final class BetterStructures extends JavaPlugin {
         new ContentPackageConfig();
         ComponentsConfigFolder.initialize();
         StructureLocationManager.getInstance();
+
+        // Initialize mob tracking system
+        if (DefaultConfig.isMobTrackingEnabled()) {
+            MobTrackingManager.getInstance();
+            Bukkit.getPluginManager().registerEvents(new MobDeathListener(), this);
+            Logger.info("Mob tracking system enabled.");
+        }
+
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());
@@ -106,6 +116,7 @@ public final class BetterStructures extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        MobTrackingManager.shutdown();
         StructureLocationManager.getInstance().shutdown();
         SchematicContainer.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);

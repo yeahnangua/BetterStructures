@@ -74,6 +74,18 @@ public class DefaultConfig extends ConfigurationFile {
     @Getter
     private static int maxOffsetDungeon;
 
+    // Mob tracking configuration
+    @Getter
+    private static boolean mobTrackingEnabled;
+    @Getter
+    private static int mobRespawnTriggerRadius;
+    @Getter
+    private static int proximityCheckInterval;
+    @Getter
+    private static int structureClearedNotifyRadius;
+    @Getter
+    private static String structureClearedMessage;
+
     public DefaultConfig() {
         super("config.yml");
         instance = this;
@@ -181,6 +193,38 @@ public class DefaultConfig extends ConfigurationFile {
                         "Used to tweak the randomization of the distance between dungeons.",
                         "Smaller values will result in dungeons being more on a grid, and larger values will result in them being less predictably placed."),
                 fileConfiguration, "maxOffsetDungeonV2", 18);
+
+        // Initialize mob tracking configuration
+        mobTrackingEnabled = ConfigurationEngine.setBoolean(
+                List.of(
+                        "Enable mob tracking and respawn system for structures.",
+                        "When enabled, mobs spawned in structures will be tracked and respawned when players approach.",
+                        "Structures will be marked as 'cleared' when all mobs are killed."),
+                fileConfiguration, "mobTracking.enabled", true);
+
+        mobRespawnTriggerRadius = ConfigurationEngine.setInt(
+                List.of(
+                        "Radius (in blocks) within which a player must be to trigger mob respawning.",
+                        "Uses spherical distance from structure center."),
+                fileConfiguration, "mobTracking.respawnTriggerRadius", 30);
+
+        proximityCheckInterval = ConfigurationEngine.setInt(
+                List.of(
+                        "Interval in ticks to check player proximity to structures.",
+                        "20 ticks = 1 second. Higher values reduce server load but delay respawn detection."),
+                fileConfiguration, "mobTracking.proximityCheckInterval", 40);
+
+        structureClearedNotifyRadius = ConfigurationEngine.setInt(
+                List.of(
+                        "Radius (in blocks) to notify players when a structure is cleared.",
+                        "Players within this radius will receive the cleared message."),
+                fileConfiguration, "mobTracking.clearedNotifyRadius", 50);
+
+        structureClearedMessage = ConfigurationEngine.setString(
+                List.of(
+                        "Message sent to players when a structure is cleared.",
+                        "Placeholders: {structure} = schematic name, {player} = player who killed the last mob"),
+                fileConfiguration, "mobTracking.clearedMessage", "&a&lCongratulations! &e{player} &ahas cleared &6{structure}&a!");
 
         ConfigurationEngine.fileSaverOnlyDefaults(fileConfiguration, file);
     }
