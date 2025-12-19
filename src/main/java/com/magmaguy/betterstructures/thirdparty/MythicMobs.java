@@ -28,9 +28,14 @@ public class MythicMobs {
         String[] args = filename.split(":");
 
 
-        MythicMob mob = MythicBukkit.inst().getMobManager().getMythicMob(args[0]).orElse(null);
+        String mobId = args[0];
+        MythicMob mob = MythicBukkit.inst().getMobManager().getMythicMob(mobId).orElse(null);
         if (mob == null) {
-            Logger.warn("Failed to spawn regional boss " + args[0] + "! The filename for this boss probably does not match the mob that should be in ~/plugins/MythicMobs/Mobs/");
+            Logger.warn("Failed to spawn regional boss! Could not find MythicMob with ID: '" + mobId + "'");
+            Logger.warn("  - Original filename parameter: " + filename);
+            Logger.warn("  - Location: " + location.getWorld().getName() + " at " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
+            Logger.warn("  - Make sure a mob with this exact ID exists in ~/plugins/MythicMobs/Mobs/");
+//            Logger.warn("  - Available MythicMobs: " + MythicBukkit.inst().getMobManager().getMobNames());
             return false;
         }
 

@@ -8,6 +8,7 @@ import com.magmaguy.betterstructures.buildingfitter.util.SchematicPicker;
 import com.magmaguy.betterstructures.config.DefaultConfig;
 import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.structurelocation.StructureLocationManager;
 import com.magmaguy.betterstructures.thirdparty.EliteMobs;
 import com.magmaguy.betterstructures.thirdparty.MythicMobs;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
@@ -143,6 +144,13 @@ public class FitAnything {
                                             "/betterstructures teleport " + location.getWorld().getName() + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ())
                             );
                 }
+
+                // Record structure location to file
+                StructureLocationManager.getInstance().recordStructure(
+                        location,
+                        schematicContainer.getConfigFilename(),
+                        fitAnything.structureType
+                );
 
                 if (!(fitAnything instanceof FitAirBuilding)) {
                     try {

@@ -4,9 +4,11 @@ import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
 import com.magmaguy.betterstructures.util.ItemStackSerialization;
 import com.magmaguy.betterstructures.util.WeighedProbability;
 import com.magmaguy.magmacore.util.Logger;
+import dev.lone.itemsadder.api.CustomStack;
 import lombok.Getter;
 import net.Indyuce.mmoitems.MMOItems;
 import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.MemorySection;
@@ -102,6 +104,24 @@ public class ChestContents {
         }
     }
 
+    private ItemStack getItemsAdderItemStack(String namespacedId) {
+        try {
+            if (Bukkit.getPluginManager().getPlugin("ItemsAdder") == null) {
+                Logger.warn("ItemsAdder is not installed but an ItemsAdder item was configured in " + treasureConfigFields.getFilename());
+                return null;
+            }
+            CustomStack customStack = CustomStack.getInstance(namespacedId);
+            if (customStack == null) {
+                Logger.warn("Invalid ItemsAdder item: " + namespacedId + " in " + treasureConfigFields.getFilename());
+                return null;
+            }
+            return customStack.getItemStack();
+        } catch (Exception ex) {
+            Logger.warn("Failed to get ItemsAdder item: " + namespacedId + " in " + treasureConfigFields.getFilename());
+            return null;
+        }
+    }
+
     private List<ChestEntry> processEntries(List<Map<String, ?>> rawChestEntries) {
         List<ChestEntry> chestEntries = new ArrayList<>();
         for (Map<String, ?> rawChestEntry : rawChestEntries) {
@@ -132,6 +152,8 @@ public class ChestContents {
                     case "weight" -> weight = getWeight(value);
                     //Support for MMOItems - og code by Carm
                     case "mmoitem", "mmoitems" -> itemStack = getMMOItemsItemStack(value);
+                    //Support for ItemsAdder
+                    case "itemsadder" -> itemStack = getItemsAdderItemStack(value);
                     case "serialized" -> itemStack = getSerializedItemStack((Map<String, Object>) entry.getValue(), value);
                     case "procedurallygenerateenchantments" -> procedurallyGeneratedEnchantments = getProcedurallyGeneratedEnchantments(value);
                     case "info" -> {

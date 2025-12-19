@@ -4,8 +4,10 @@ import com.magmaguy.betterstructures.MetadataHandler;
 import com.magmaguy.betterstructures.api.ChestFillEvent;
 import com.magmaguy.betterstructures.chests.ChestContents;
 import com.magmaguy.betterstructures.config.modulegenerators.ModuleGeneratorsConfigFields;
+import com.magmaguy.betterstructures.config.generators.GeneratorConfigFields;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfig;
 import com.magmaguy.betterstructures.config.treasures.TreasureConfigFields;
+import com.magmaguy.betterstructures.structurelocation.StructureLocationManager;
 import com.magmaguy.betterstructures.util.WorldEditUtils;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.util.Logger;
@@ -82,6 +84,13 @@ public final class ModulePasting {
                 );
             }
         }
+
+        // Record dungeon location to file
+        StructureLocationManager.getInstance().recordStructure(
+                startLocation,
+                moduleGeneratorsConfigFields.getFilename(),
+                GeneratorConfigFields.StructureType.DUNGEON
+        );
     }
 
     private static boolean isNbtRichMaterial(Material m) {

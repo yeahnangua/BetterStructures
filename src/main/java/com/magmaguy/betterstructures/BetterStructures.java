@@ -17,6 +17,7 @@ import com.magmaguy.betterstructures.listeners.NewChunkLoadEvent;
 import com.magmaguy.betterstructures.modules.ModulesContainer;
 import com.magmaguy.betterstructures.modules.WFCGenerator;
 import com.magmaguy.betterstructures.schematics.SchematicContainer;
+import com.magmaguy.betterstructures.structurelocation.StructureLocationManager;
 import com.magmaguy.betterstructures.thirdparty.WorldGuard;
 import com.magmaguy.easyminecraftgoals.NMSManager;
 import com.magmaguy.magmacore.MagmaCore;
@@ -65,6 +66,7 @@ public final class BetterStructures extends JavaPlugin {
         new ModulesConfig();
         new ContentPackageConfig();
         ComponentsConfigFolder.initialize();
+        StructureLocationManager.getInstance();
         CommandManager commandManager = new CommandManager(this, "betterstructures");
         commandManager.registerCommand(new LootifyCommand());
         commandManager.registerCommand(new PlaceCommand());
@@ -104,6 +106,7 @@ public final class BetterStructures extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        StructureLocationManager.getInstance().shutdown();
         SchematicContainer.shutdown();
         Bukkit.getServer().getScheduler().cancelTasks(MetadataHandler.PLUGIN);
         MagmaCore.shutdown();
